@@ -36,10 +36,10 @@
 
 <#
 .SYNOPSIS
-Powershell Script to Update Nuget.config edits 
+Powershell Script to Update Nuget.config
 
 .DESCRIPTION
-Powershell Script to Update Nuget.config, set repositoryPackage, remove local packages
+Powershell Script to Update Nuget.config ( set repositoryPackage, remove local packages)
 
 .EXAMPLE
 PS> .\Update-NugetConfig -repositoryPath '/packages'
