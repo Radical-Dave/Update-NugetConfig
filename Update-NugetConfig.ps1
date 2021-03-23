@@ -15,7 +15,7 @@
 
 .COPYRIGHT David Walker, Sitecore Dave, Radical Dave
 
-.TAGS powershell script
+.TAGS powershell script config nuget packages
 
 .LICENSEURI https://github.com/Radical-Dave/Update-NugetConfig/blob/main/LICENSE
 
@@ -61,8 +61,8 @@ Param(
     # Path to find $name
 	[Parameter(Mandatory=$false, Position=0)]
     [ValidateScript({Test-Path $_ -PathType 'Container'})] [string]$path,
-	# Name of file default [nuget.config]
-	[Parameter(Mandatory=$false, Position=0)] [string]$name = 'nuget.config',
+	# Name of file default
+	[Parameter(Mandatory=$false, Position=0)] [string]$name = '',
     # RepositoryPath - configuration.config.repositoryPath value
 	[Parameter(Mandatory=$false)] [string]$repositoryPath,
 
@@ -89,49 +89,69 @@ process {
 	Write-Verbose "$PSScriptName $path $name $template start"
     if($PSCmdlet.ShouldProcess($path)) {
         try {
-            $files = Get-ChildItem -path $path -include $name -Recurse
-            foreach($file in $files) {
-                try {
-                    Write-Host " # Processing:$file" -ForegroundColor Yellow
-                    $xml = [xml](Get-Content $file)
 
-                    $xmlOriginal = $xml
-                    $xmlDirty = $false
-                    #$repositoryPathCurrent = Select-Xml -xml $xml -XPath "//configuration/config/add[@key='repositoryPath']/@value"
-                    #$repositoryPathCurrent = ($xml.configuration.config.add | Where-Object {$_.Key -eq 'repositoryPath'}).Value
-                    #$repositoryPathNode = $xml.configuration.config.add | Where-Object {$_.Key -eq 'repositoryPath'}
-                    $repositoryPathNode = $xml.SelectSingleNode("//configuration/config/add[@key = 'repositoryPath']")
-                    $repositoryPathCurrent = $repositoryPathNode.Value
-                    Write-Host " # Current repositoryPath:$repositoryPathCurrent" -ForegroundColor Yellow
-                    if ($repositoryPathCurrent -and $repositoryPath -and $repositoryPath -ne $repositoryPathCurrent) {
-                        $repositoryPathNode.SetAttribute("value", $repositoryPath)
-                        $repositoryPathNode.value = $repositoryPath
-                        Write-Host " # Updated repositoryPathNode:$repositoryPath" -ForegroundColor Green
-                        Write-Host " # Updated repositoryPathNode:$($repositoryPathNode.value)" -ForegroundColor Green
-                        $xmlDirty = $true                      
-                    } else {
-                        ## needs to be added?
-                    }
 
-                    if ($xml -eq $xmlOriginal -and !$xmlDirty) {
-                        Write-Host " # No changes to $file were detected" -ForegroundColor Yellow
-                    } else {
-                        $xml.Save($file)
-                        Write-Host " # $file updated" -ForegroundColor Green
-                        #Write-Verbose " # file:$xml"
+            #if !$name - for absolute completeness need to investigate all packages folders
 
-                        if ($remove) {
-                            $xmlPath = Split-Path $file -Parent
-                            $packagesLocal = Join-Path $xmlPath "packages"
-                            if ($packagesLocal -and $repositoryPath -ne $packagesLocal -and (Test-Path $packagesLocal)) {
-                                Write-Verbose " # Removing: $packagesLocal"
-                                Remove-Item $packagesLocal -Recurse
-                            }
-                        }
-                    }                 
+            if (!$name) {
+                $packages = Get-ChildItem -path $path -directory -include 'packages' -Recurse
+                foreach($package in $packages) {
+                    Write-Host " # Processing:$package" -ForegroundColor Yellow
+
+                    #if no nuget.config let's add it, until there is a better way to centralize to /packages
+
+                    #merge packages info /packages
+
+                    #edit csproj
+                    #replace '..\..\packages' with '\packages'
                 }
-                catch {
-                    Write-Host "$PSScriptName Error Occured:$($PSItem.Exception.Message)" -ForegroundColor Red
+            } else {
+                $files = Get-ChildItem -path $path -include $name -Recurse
+                foreach($file in $files) {
+                    try {
+                        Write-Host " # Processing:$file" -ForegroundColor Yellow
+                        $xml = [xml](Get-Content $file)
+
+                        $xmlOriginal = $xml
+                        $xmlDirty = $false
+                        #$repositoryPathCurrent = Select-Xml -xml $xml -XPath "//configuration/config/add[@key='repositoryPath']/@value"
+                        #$repositoryPathCurrent = ($xml.configuration.config.add | Where-Object {$_.Key -eq 'repositoryPath'}).Value
+                        #$repositoryPathNode = $xml.configuration.config.add | Where-Object {$_.Key -eq 'repositoryPath'}
+                        $repositoryPathNode = $xml.SelectSingleNode("//configuration/config/add[@key = 'repositoryPath']")
+                        $repositoryPathCurrent = $repositoryPathNode.Value
+                        Write-Host " # Current repositoryPath:$repositoryPathCurrent" -ForegroundColor Yellow
+                        if ($repositoryPathCurrent -and $repositoryPath -and $repositoryPath -ne $repositoryPathCurrent) {
+                            $repositoryPathNode.SetAttribute("value", $repositoryPath)
+                            $repositoryPathNode.value = $repositoryPath
+                            Write-Host " # Updated repositoryPathNode:$repositoryPath" -ForegroundColor Green
+                            Write-Host " # Updated repositoryPathNode:$($repositoryPathNode.value)" -ForegroundColor Green
+                            $xmlDirty = $true                      
+                        } else {
+                            ## needs to be added?
+                        }
+
+                        if ($xml -eq $xmlOriginal -and !$xmlDirty) {
+                            Write-Host " # No changes to $file were detected" -ForegroundColor Yellow
+                        } else {
+                            $xml.Save($file)
+                            Write-Host " # $file updated" -ForegroundColor Green
+                            #Write-Verbose " # file:$xml"
+                            
+                            #merge into dont remove, no sense in having to download again
+                            if ($remove) {
+                                $xmlPath = Split-Path $file -Parent
+                                $packagesLocal = Join-Path $xmlPath "packages"
+                                if ($packagesLocal -and $repositoryPath -ne $packagesLocal -and (Test-Path $packagesLocal)) {
+                                    Write-Verbose " # Removing: $packagesLocal"
+                                    Remove-Item $packagesLocal -Recurse
+                                }
+                            }
+                            #must modify csproj's.. most references are actually ..\..\packages and must also be changed to \packages
+                        }                 
+                    }
+                    catch {
+                        Write-Host "$PSScriptName Error Occured:$($PSItem.Exception.Message)" -ForegroundColor Red
+                    }
                 }
             }
         }
