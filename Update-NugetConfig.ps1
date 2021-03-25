@@ -91,14 +91,14 @@ process {
         try {
 
 
-            #if !$name - for absolute completeness need to investigate all packages folders
+            #if !$name - for absolute completeness need to investigate all packages folders and this is my preference
 
             if (!$name) {
                 $packages = Get-ChildItem -path $path -directory -include 'packages' -Recurse
                 foreach($package in $packages) {
                     Write-Host " # Processing:$package" -ForegroundColor Yellow
 
-                    #if no nuget.config let's add it, until there is a better way to centralize to /packages
+                    #add nuget.config (until there is a better way to centralize to /packages)
 
                     #merge packages info /packages
 
